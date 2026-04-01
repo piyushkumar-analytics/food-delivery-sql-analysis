@@ -1,0 +1,134 @@
+-- ==============================
+-- Creating DataBase
+-- ==============================
+
+CREATE DATABASE food_project;
+USE food_project;
+
+-- ==============================
+-- Dataset Overview
+-- ==============================
+
+SELECT * FROM orders LIMIT 10;
+SELECT COUNT(*) AS Total_Rows FROM orders;
+DESCRIBE orders;
+SELECT COUNT(*) AS Total_Columns
+FROM information_schema.columns 
+WHERE table_schema = 'food_project' 
+AND table_name = 'orders';
+
+-- ==============================
+-- Rename Columns
+-- ==============================
+
+ALTER TABLE orders
+RENAME COLUMN `Restaurant Name` TO Restaurant_Name,
+RENAME COLUMN `Dish Name` TO Dish_Name,
+RENAME COLUMN `Order Date` TO Order_Date,
+RENAME COLUMN `Rating Count` TO Rating_Count,
+RENAME COLUMN `Price (INR)` TO Price;
+
+-- ==============================
+-- Fixing Data Types 
+-- ==============================
+
+ALTER TABLE orders
+MODIFY State VARCHAR(50),
+MODIFY City VARCHAR(50), 
+MODIFY Restaurant_Name VARCHAR(100),
+MODIFY Location VARCHAR(100),
+MODIFY Category VARCHAR(100),
+MODIFY Dish_Name VARCHAR(150),
+MODIFY Price Decimal(10,2),
+MODIFY Rating DECIMAL(2,1),
+MODIFY Rating_Count int;
+
+UPDATE orders
+SET Order_Date = STR_TO_DATE(Order_Date, '%d/%m/%Y')
+WHERE Order_Date LIKE '%/%';
+
+ALTER TABLE orders
+MODIFY Order_Date DATE;
+DESCRIBE orders;
+
+-- ==============================
+-- KPI ANALYSIS
+-- ==============================
+
+-- Total Sales
+SELECT ROUND(SUM(Price),2) AS Total_Sales
+FROM orders;
+
+-- Total Orders
+SELECT ROUND(COUNT(*),2) AS Total_Orders
+FROM orders;
+
+-- Average Rating
+SELECT ROUND(AVG(Rating),2) AS Average_Rating
+FROM orders;
+
+-- Total Rating Count
+SELECT SUM(Rating_Count) AS Total_Rating_Count
+FROM orders;
+
+-- Average Rating Count Per Dish
+SELECT ROUND(AVG(Rating_Count),2) AS Average_Rating_Count
+FROM orders;
+
+-- ==============================
+-- Exploratory Data Analysis
+-- ==============================
+
+-- Top 5 Most Expensive Dishes
+SELECT Dish_Name, Category, Restaurant_Name, max(Price) AS Price
+FROM orders
+GROUP BY Dish_Name, Category, Restaurant_Name
+ORDER BY max(Price) DESC LIMIT 5;
+
+-- Average Price by Category
+SELECT Category, ROUND(AVG(Price),2) AS Average_Price
+FROM orders
+GROUP BY Category
+ORDER BY Average_Price DESC;
+
+-- Most Popular Dishes by Rating Count
+SELECT Dish_Name, SUM(Rating_Count) AS Rating_Count
+FROM orders
+GROUP BY Dish_Name
+ORDER BY SUM(Rating_Count) DESC;
+
+-- Total Sales by Restaurant
+SELECT Restaurant_Name, ROUND(SUM(Price),2) AS Total_Sales
+FROM orders
+GROUP BY Restaurant_Name
+ORDER BY Total_Sales DESC;
+
+-- Total Orders BY Category
+SELECT Category, COUNT(*) AS Total_Orders
+FROM orders
+GROUP BY Category
+ORDER BY Total_Orders Desc;
+
+-- ==============================
+-- ADVANCED SQL
+-- ==============================
+
+-- Top Dishes With Each Category
+SELECT Dish_Name, Category, Price,
+DENSE_RANK() OVER(PARTITION BY Category ORDER BY Price DESC) AS Price_Rank
+FROM orders;
+
+-- Dishes Above Average Price
+WITH avg_price_cte AS (
+SELECT AVG(Price) as Avg_Price From orders
+)
+SELECT Dish_Name, Price
+FROM orders, avg_price_cte
+WHERE Price>Avg_Price;
+
+-- Category Contribution (%)
+SELECT Category,
+CONCAT(ROUND(SUM(Price) * 100 / (SELECT SUM(Price) FROM orders),2),' ','%') AS contribution_pct
+FROM orders
+GROUP BY Category
+ORDER BY SUM(Price) DESC;
